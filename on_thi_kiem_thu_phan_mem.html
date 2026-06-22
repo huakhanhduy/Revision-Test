@@ -1,0 +1,280 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+#app { padding: 1rem 0; max-width: 680px; }
+.header { margin-bottom: 1.5rem; }
+.header h2 { font-size: 18px; font-weight: 500; color: var(--color-text-primary); }
+.header p { font-size: 14px; color: var(--color-text-secondary); margin-top: 4px; }
+.progress-bar { height: 4px; background: var(--color-background-secondary); border-radius: 2px; margin: 1rem 0; }
+.progress-fill { height: 100%; background: #5340c8; border-radius: 2px; transition: width 0.3s; }
+.stats { display: flex; gap: 12px; margin-bottom: 1.5rem; }
+.stat { flex: 1; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; text-align: center; }
+.stat-num { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.stat-label { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.q-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.q-num { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px; }
+.q-text { font-size: 15px; color: var(--color-text-primary); line-height: 1.6; margin-bottom: 1rem; }
+.options { display: flex; flex-direction: column; gap: 8px; }
+.opt { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); cursor: pointer; transition: background 0.15s, border-color 0.15s; font-size: 14px; color: var(--color-text-primary); background: var(--color-background-primary); }
+.opt:hover { background: var(--color-background-secondary); border-color: var(--color-border-secondary); }
+.opt.correct { background: #eaf3de; border-color: #3b6d11; color: #3b6d11; }
+.opt.wrong { background: #fcebeb; border-color: #a32d2d; color: #a32d2d; }
+.opt.reveal { background: #eaf3de; border-color: #3b6d11; color: #3b6d11; }
+.opt.disabled { cursor: default; pointer-events: none; }
+.opt-letter { font-weight: 500; min-width: 20px; }
+.feedback { font-size: 13px; margin-top: 10px; padding: 8px 12px; border-radius: var(--border-radius-md); }
+.feedback.ok { background: #eaf3de; color: #3b6d11; }
+.feedback.err { background: #fcebeb; color: #a32d2d; }
+.nav { display: flex; gap: 10px; margin-top: 1rem; align-items: center; }
+.nav button { padding: 8px 18px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-size: 14px; cursor: pointer; }
+.nav button:hover { background: var(--color-background-secondary); }
+.nav button.primary { background: #5340c8; color: #fff; border-color: #5340c8; }
+.nav button.primary:hover { background: #3c2fa0; }
+.nav button:disabled { opacity: 0.4; cursor: default; }
+.q-counter { font-size: 13px; color: var(--color-text-secondary); margin-left: auto; }
+.result-box { text-align: center; padding: 2rem 1rem; }
+.result-box .big { font-size: 48px; font-weight: 500; color: #5340c8; }
+.result-box .sub { font-size: 16px; color: var(--color-text-secondary); margin-top: 8px; }
+.result-box .msg { font-size: 15px; color: var(--color-text-primary); margin-top: 1rem; }
+.mode-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-size: 13px; cursor: pointer; margin-top: 1rem; margin-right: 8px; }
+.mode-btn.active { background: #5340c8; color: #fff; border-color: #5340c8; }
+</style>
+
+<div id="app">
+  <div class="header">
+    <h2>Kiểm thử & Đảm bảo chất lượng phần mềm</h2>
+    <p>100 câu trắc nghiệm ôn thi</p>
+    <div style="margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="mode-btn active" id="btn-all" onclick="setMode('all')">Tất cả (100 câu)</button>
+      <button class="mode-btn" id="btn-random" onclick="setMode('random')">Ngẫu nhiên 20 câu</button>
+      <button class="mode-btn" id="btn-wrong" onclick="setMode('wrong')">Ôn sai (<span id="wrong-count">0</span>)</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="s-done">0</div><div class="stat-label">Đã làm</div></div>
+    <div class="stat"><div class="stat-num" id="s-correct" style="color:#3b6d11">0</div><div class="stat-label">Đúng</div></div>
+    <div class="stat"><div class="stat-num" id="s-wrong" style="color:#a32d2d">0</div><div class="stat-label">Sai</div></div>
+    <div class="stat"><div class="stat-num" id="s-pct">0%</div><div class="stat-label">Tỉ lệ đúng</div></div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+  <div id="q-area"></div>
+  <div class="nav">
+    <button onclick="prevQ()" id="btn-prev" disabled>← Trước</button>
+    <button onclick="nextQ()" id="btn-next">Tiếp →</button>
+    <button class="primary" onclick="restartQuiz()">Làm lại</button>
+    <span class="q-counter" id="q-pos">1 / 100</span>
+  </div>
+</div>
+
+<script>
+const ALL_Q = [
+  {q:"Kiểm thử phần mềm là quá trình:",o:["Viết mã nguồn","Tìm lỗi và đánh giá chất lượng phần mềm","Thiết kế giao diện","Quản trị cơ sở dữ liệu"],a:1},
+  {q:"Mục tiêu chính của kiểm thử là:",o:["Chứng minh phần mềm không có lỗi","Tăng tốc độ máy tính","Phát hiện lỗi và giảm rủi ro","Giảm kích thước chương trình"],a:2},
+  {q:"Lỗi do lập trình viên tạo ra trong mã nguồn được gọi là:",o:["Defect","Test Case","Test Plan","Requirement"],a:0},
+  {q:"Kết quả sai lệch khi chạy chương trình được gọi là:",o:["Bug","Requirement","Module","Baseline"],a:0},
+  {q:"Kiểm thử được thực hiện trong giai đoạn nào của vòng đời phần mềm?",o:["Chỉ khi triển khai","Chỉ khi bảo trì","Xuyên suốt vòng đời phát triển","Chỉ khi thiết kế"],a:2},
+  {q:"Một Test Case thường bao gồm:",o:["Mã nguồn và cơ sở dữ liệu","Dữ liệu đầu vào và kết quả mong đợi","Giao diện người dùng","Báo cáo lỗi"],a:1},
+  {q:"Kiểm thử tĩnh (Static Testing) là:",o:["Chạy chương trình để tìm lỗi","Không cần thực thi chương trình","Kiểm thử hiệu năng","Kiểm thử bảo mật"],a:1},
+  {q:"Ai chịu trách nhiệm chính về chất lượng phần mềm?",o:["Chỉ Tester","Chỉ Project Manager","Toàn bộ nhóm phát triển","Chỉ khách hàng"],a:2},
+  {q:"Kiểm thử động (Dynamic Testing) yêu cầu:",o:["Thực thi chương trình","Xem xét tài liệu","Kiểm tra yêu cầu","Đọc mã nguồn"],a:0},
+  {q:"Verification trả lời câu hỏi:",o:["Xây đúng sản phẩm chưa?","Khách hàng hài lòng chưa?","Có bán được không?","Có chạy nhanh không?"],a:0},
+  {q:"Validation trả lời câu hỏi:",o:["Có đúng quy trình không?","Có đúng sản phẩm khách hàng cần không?","Có tối ưu không?","Có bảo mật không?"],a:1},
+  {q:"Mức kiểm thử thấp nhất là:",o:["System Testing","Acceptance Testing","Integration Testing","Unit Testing"],a:3},
+  {q:"Nguyên tắc nào sau đây là đúng?",o:["Kiểm thử chứng minh không có lỗi","Kiểm thử chỉ cần cuối dự án","Kiểm thử sớm giúp giảm chi phí sửa lỗi","Không cần kiểm thử với dự án nhỏ"],a:2},
+  {q:"Regression Testing dùng để:",o:["Kiểm tra lỗi mới phát sinh sau khi sửa đổi","Kiểm tra bảo mật","Kiểm tra giao diện","Kiểm tra dữ liệu"],a:0},
+  {q:"Smoke Testing nhằm:",o:["Kiểm tra toàn bộ hệ thống chi tiết","Xác nhận các chức năng chính hoạt động","Kiểm tra hiệu năng","Kiểm tra bảo mật"],a:1},
+  {q:"Bước đầu tiên của quy trình kiểm thử là:",o:["Thiết kế Test Case","Lập kế hoạch kiểm thử","Báo cáo lỗi","Thực hiện kiểm thử"],a:1},
+  {q:"Test Plan dùng để:",o:["Mô tả chiến lược kiểm thử","Lưu mã nguồn","Lưu dữ liệu khách hàng","Thiết kế giao diện"],a:0},
+  {q:"Unit Testing thường do ai thực hiện?",o:["Khách hàng","Quản lý dự án","Lập trình viên","Người dùng cuối"],a:2},
+  {q:"Mục tiêu của Unit Testing là:",o:["Kiểm tra từng đơn vị nhỏ của chương trình","Kiểm tra toàn hệ thống","Kiểm tra mạng","Kiểm tra bảo mật"],a:0},
+  {q:"Integration Testing nhằm:",o:["Kiểm tra cơ sở dữ liệu","Kiểm tra sự tương tác giữa các module","Kiểm tra giao diện","Kiểm tra người dùng"],a:1},
+  {q:"System Testing được thực hiện trên:",o:["Từng hàm riêng lẻ","Từng lớp riêng lẻ","Toàn bộ hệ thống hoàn chỉnh","Một thành phần"],a:2},
+  {q:"Acceptance Testing thường do:",o:["Khách hàng hoặc người dùng thực hiện","Lập trình viên thực hiện","DBA thực hiện","Network Admin thực hiện"],a:0},
+  {q:"Kiểm thử hiệu năng dùng để đánh giá:",o:["Tính đúng đắn logic","Tốc độ và khả năng đáp ứng","Thiết kế giao diện","Màu sắc ứng dụng"],a:1},
+  {q:"Load Testing là:",o:["Kiểm tra dưới tải dự kiến","Kiểm tra khi mất điện","Kiểm tra giao diện","Kiểm tra bảo mật"],a:0},
+  {q:"Stress Testing là:",o:["Kiểm tra khi tải vượt ngưỡng","Kiểm tra tính đúng đắn","Kiểm tra dữ liệu","Kiểm tra thiết kế"],a:0},
+  {q:"Test Case phải có:",o:["Kết quả mong đợi","Tên công ty","Logo dự án","Sơ đồ mạng"],a:0},
+  {q:"Test Data là:",o:["Dữ liệu sử dụng để kiểm thử","Nhật ký lỗi","Mã nguồn","Tài liệu thiết kế"],a:0},
+  {q:"Bug Report dùng để:",o:["Quản lý nhân sự","Mô tả lỗi phát hiện được","Thiết kế hệ thống","Lưu yêu cầu"],a:1},
+  {q:"Kiểm thử tự động phù hợp nhất khi:",o:["Chỉ thực hiện một lần","Kiểm thử lặp đi lặp lại nhiều lần","Không có yêu cầu","Không có dữ liệu"],a:1},
+  {q:"Ưu điểm của kiểm thử tự động:",o:["Không cần bảo trì","Không tốn chi phí","Thực hiện nhanh và lặp lại chính xác","Không cần Tester"],a:2},
+  {q:"Kiểm thử hộp đen tập trung vào:",o:["Mã nguồn bên trong","Chức năng đầu vào và đầu ra","Thuật toán","Cấu trúc dữ liệu"],a:1},
+  {q:"Kiểm thử hộp trắng yêu cầu:",o:["Biết cấu trúc mã nguồn","Chỉ biết giao diện","Chỉ biết yêu cầu","Không cần tài liệu"],a:0},
+  {q:"Kỹ thuật phân lớp tương đương thuộc:",o:["Hộp trắng","Hộp đen","Kiểm thử hiệu năng","Kiểm thử hồi quy"],a:1},
+  {q:"Boundary Value Analysis kiểm tra:",o:["Giá trị biên","Giá trị ngẫu nhiên","Giá trị trung bình","Giá trị lớn nhất"],a:0},
+  {q:"Decision Table Testing thuộc:",o:["Kiểm thử hộp trắng","Kiểm thử hiệu năng","Kiểm thử hộp đen","Kiểm thử hồi quy"],a:2},
+  {q:"Statement Coverage là kỹ thuật:",o:["Hộp trắng","Hộp đen","Hiệu năng","Chấp nhận"],a:0},
+  {q:"Branch Coverage đo:",o:["Số lượng giao diện","Số nhánh điều kiện được thực hiện","Số lỗi","Số test case"],a:1},
+  {q:"Path Testing thuộc:",o:["Hộp đen","Hộp trắng","Hiệu năng","Bảo mật"],a:1},
+  {q:"Mục tiêu của hộp trắng là:",o:["Kiểm tra logic bên trong chương trình","Kiểm tra giao diện","Kiểm tra yêu cầu","Kiểm tra người dùng"],a:0},
+  {q:"Một ưu điểm của hộp đen:",o:["Không cần biết mã nguồn","Kiểm tra mọi đường đi","Đảm bảo 100% lỗi logic","Không cần tài liệu"],a:0},
+  {q:"Top-down Integration Testing bắt đầu từ:",o:["Module mức cao","Module mức thấp","Cơ sở dữ liệu","Giao diện"],a:0},
+  {q:"Bottom-up Integration Testing bắt đầu từ:",o:["Module mức cao","Module mức thấp","Người dùng","Yêu cầu"],a:1},
+  {q:"Trong Top-down thường sử dụng:",o:["Driver","Stub","Script SQL","Log File"],a:1},
+  {q:"Trong Bottom-up thường sử dụng:",o:["Stub","Driver","Browser","Report"],a:1},
+  {q:"Mục tiêu của kiểm thử tích hợp:",o:["Kiểm tra tương tác module","Kiểm tra hiệu năng","Kiểm tra giao diện đồ họa","Kiểm tra phần cứng"],a:0},
+  {q:"Regression Testing nên thực hiện khi:",o:["Có thay đổi phần mềm","Bắt đầu dự án","Chưa viết mã nguồn","Không có lỗi"],a:0},
+  {q:"Lợi ích của Regression Testing:",o:["Phát hiện lỗi tái xuất hiện","Tăng dung lượng bộ nhớ","Tăng tốc CPU","Giảm dữ liệu"],a:0},
+  {q:"Big Bang Integration là:",o:["Tích hợp từng phần","Tích hợp tất cả cùng lúc","Không tích hợp","Kiểm thử đơn vị"],a:1},
+  {q:"Nhược điểm của Big Bang:",o:["Khó xác định nguyên nhân lỗi","Dễ kiểm soát","Nhanh phát hiện lỗi","Không cần tài liệu"],a:0},
+  {q:"Tài liệu kiểm thử tích hợp bao gồm:",o:["Kế hoạch và kết quả kiểm thử","Hóa đơn mua thiết bị","Hồ sơ nhân sự","Báo cáo tài chính"],a:0},
+  {q:"Inspection là:",o:["Thực thi chương trình","Xem xét tài liệu có cấu trúc","Kiểm thử hiệu năng","Kiểm thử bảo mật"],a:1},
+  {q:"Walkthrough thường do:",o:["Tác giả tài liệu trình bày","Khách hàng","Người dùng cuối","Nhà cung cấp"],a:0},
+  {q:"Review thuộc loại:",o:["Kiểm thử động","Kiểm thử tĩnh","Kiểm thử tải","Kiểm thử hồi quy"],a:1},
+  {q:"Mục tiêu của Review:",o:["Phát hiện lỗi sớm","Tăng tốc mạng","Thiết kế giao diện","Mã hóa dữ liệu"],a:0},
+  {q:"Verification thuộc nhóm:",o:["Tĩnh","Động","Hiệu năng","Tải"],a:0},
+  {q:"Validation thuộc nhóm:",o:["Kiểm tra sản phẩm đáp ứng nhu cầu người dùng","Tăng tốc độ chương trình","Tăng bộ nhớ","Mã hóa dữ liệu"],a:0},
+  {q:"Mô hình chữ V liên hệ giữa:",o:["Phát triển và kiểm thử","Bán hàng và marketing","Thiết kế và tài chính","Mạng và bảo mật"],a:0},
+  {q:"Trong mô hình V, Unit Test tương ứng:",o:["Thiết kế chi tiết","Yêu cầu người dùng","Thiết kế hệ thống","Kiểm thử chấp nhận"],a:0},
+  {q:"System Test tương ứng:",o:["Thiết kế chi tiết","Thiết kế kiến trúc","Đặc tả hệ thống","Mã nguồn"],a:2},
+  {q:"Acceptance Test tương ứng:",o:["Thiết kế chi tiết","Yêu cầu người dùng","Cơ sở dữ liệu","Thuật toán"],a:1},
+  {q:"JUnit được sử dụng chủ yếu cho:",o:["Java","PHP","COBOL","Assembly"],a:0},
+  {q:"CPPUnit dùng cho:",o:["Java","C++","Python","Ruby"],a:1},
+  {q:"NUnit dùng cho:",o:["JavaScript","C#/.NET","PHP","C"],a:1},
+  {q:"JUnit thuộc loại:",o:["Unit Testing Framework","Database Tool","IDE","CMS"],a:0},
+  {q:"Annotation @Test trong JUnit dùng để:",o:["Đánh dấu phương thức kiểm thử","Kết nối CSDL","Tạo giao diện","Khởi động ứng dụng"],a:0},
+  {q:"Assertion trong JUnit dùng để:",o:["Kiểm tra kết quả mong đợi","Tạo bảng dữ liệu","Kết nối mạng","Quản lý người dùng"],a:0},
+  {q:"QuickTest Professional (QTP) hiện nay là:",o:["UFT","JMeter","Eclipse","Git"],a:0},
+  {q:"QTP/UFT chủ yếu dùng cho:",o:["Kiểm thử tự động giao diện","Thiết kế CSDL","Quản lý mã nguồn","Thiết kế mạng"],a:0},
+  {q:"JMeter được phát triển bởi:",o:["Apache","Microsoft","Oracle","IBM"],a:0},
+  {q:"JMeter thường dùng để:",o:["Kiểm thử tải và hiệu năng","Thiết kế giao diện","Quản lý dự án","Kiểm thử đơn vị"],a:0},
+  {q:"Một lỗi được phát hiện càng sớm thì:",o:["Chi phí sửa càng thấp","Chi phí sửa càng cao","Không thay đổi","Không xác định"],a:0},
+  {q:"Test Suite là:",o:["Tập hợp các Test Case","Báo cáo lỗi","Tài liệu yêu cầu","Mã nguồn"],a:0},
+  {q:"Test Scenario mô tả:",o:["Tình huống kiểm thử tổng quát","Câu lệnh SQL","Giao diện người dùng","Cấu hình mạng"],a:0},
+  {q:"Một Test Case tốt cần:",o:["Không có dữ liệu đầu vào","Có kết quả mong đợi rõ ràng","Không cần mục tiêu","Không cần điều kiện"],a:1},
+  {q:"Kiểm thử bảo mật nhằm:",o:["Phát hiện lỗ hổng bảo mật","Kiểm tra tốc độ","Kiểm tra giao diện","Kiểm tra bộ nhớ"],a:0},
+  {q:"Alpha Testing thường diễn ra:",o:["Tại môi trường nhà phát triển","Sau khi ngừng dự án","Sau bảo trì","Trong sản xuất"],a:0},
+  {q:"Beta Testing thường diễn ra:",o:["Với người dùng thực tế","Trong phòng lab nội bộ","Chỉ với lập trình viên","Trước Unit Test"],a:0},
+  {q:"Exploratory Testing là:",o:["Kiểm thử dựa trên khám phá","Kiểm thử tải","Kiểm thử hồi quy","Kiểm thử đơn vị"],a:0},
+  {q:"Bug Severity thể hiện:",o:["Mức độ nghiêm trọng của lỗi","Thời gian sửa lỗi","Người sửa lỗi","Phiên bản phần mềm"],a:0},
+  {q:"Bug Priority thể hiện:",o:["Mức ưu tiên xử lý lỗi","Số lượng lỗi","Kích thước lỗi","Loại lỗi"],a:0},
+  {q:"Test Automation Framework giúp:",o:["Tổ chức và tái sử dụng kiểm thử tự động","Thiết kế mạng","Quản lý tài chính","Thiết kế UI"],a:0},
+  {q:"Kỹ thuật kiểm thử nào dựa trên yêu cầu?",o:["Hộp đen","Hộp trắng","Path Coverage","Statement Coverage"],a:0},
+  {q:"Coverage càng cao:",o:["Khả năng bao phủ kiểm thử càng lớn","Chương trình chạy nhanh hơn","Bộ nhớ giảm","Không liên quan"],a:0},
+  {q:"Defect Life Cycle mô tả:",o:["Vòng đời của lỗi","Vòng đời dự án","Vòng đời khách hàng","Vòng đời cơ sở dữ liệu"],a:0},
+  {q:"Trạng thái đầu tiên của lỗi thường là:",o:["New","Closed","Deferred","Rejected"],a:0},
+  {q:"Trạng thái cuối cùng sau khi xác nhận sửa thành công:",o:["Open","Assigned","Closed","Reopen"],a:2},
+  {q:"Kiểm thử phi chức năng bao gồm:",o:["Hiệu năng","Logic nghiệp vụ","Tính toán","Thuật toán"],a:0},
+  {q:"Usability Testing đánh giá:",o:["Tính dễ sử dụng","Tốc độ CPU","Dung lượng RAM","Độ phức tạp mã nguồn"],a:0},
+  {q:"Compatibility Testing kiểm tra:",o:["Khả năng tương thích môi trường","Tính toán","Dữ liệu","Thuật toán"],a:0},
+  {q:"Monkey Testing là:",o:["Kiểm thử ngẫu nhiên","Kiểm thử đơn vị","Kiểm thử tích hợp","Kiểm thử hồi quy"],a:0},
+  {q:"Kiểm thử nào thường được thực hiện đầu tiên?",o:["Unit Test","Acceptance Test","System Test","Beta Test"],a:0},
+  {q:"Trong Agile, kiểm thử nên:",o:["Thực hiện liên tục","Thực hiện cuối dự án","Không cần thực hiện","Thực hiện sau triển khai"],a:0},
+  {q:"Continuous Testing thường kết hợp với:",o:["CI/CD","ERP","CRM","VPN"],a:0},
+  {q:"Mục đích của Test Environment:",o:["Cung cấp môi trường kiểm thử","Quản lý tài chính","Thiết kế giao diện","Quản lý nhân sự"],a:0},
+  {q:"Kết quả thực tế của Test Case gọi là:",o:["Actual Result","Expected Result","Requirement","Severity"],a:0},
+  {q:"Nếu Actual Result khác Expected Result:",o:["Có thể tồn tại lỗi","Chắc chắn đúng","Không cần kiểm tra","Bỏ qua"],a:0},
+  {q:"Một Test Case có thể cho kết quả:",o:["Pass hoặc Fail","Compile hoặc Link","Upload hoặc Download","Save hoặc Print"],a:0},
+  {q:"Test Report được lập sau:",o:["Hoàn thành kiểm thử","Bắt đầu dự án","Thiết kế hệ thống","Thu thập yêu cầu"],a:0},
+  {q:"Mục tiêu của QA là:",o:["Đảm bảo quy trình tạo ra chất lượng","Viết mã nguồn","Quản lý mạng","Thiết kế đồ họa"],a:0},
+  {q:"QC tập trung vào:",o:["Phát hiện lỗi trên sản phẩm","Tuyển dụng nhân sự","Lập ngân sách","Quản lý kho"],a:0}
+];
+
+let mode = 'all';
+let questions = [...ALL_Q];
+let cur = 0;
+let answered = {};
+let wrongSet = new Set();
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + m).classList.add('active');
+  if (m === 'all') { questions = ALL_Q.map((q,i)=>({...q,origIdx:i})); }
+  else if (m === 'random') {
+    let arr = ALL_Q.map((q,i)=>({...q,origIdx:i}));
+    for(let i=arr.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+    questions = arr.slice(0,20);
+  } else {
+    if(wrongSet.size === 0) { alert('Chưa có câu sai nào!'); return; }
+    questions = [...wrongSet].map(i=>({...ALL_Q[i],origIdx:i}));
+  }
+  cur = 0; answered = {};
+  render();
+}
+
+function render() {
+  if (questions.length === 0) { document.getElementById('q-area').innerHTML = '<div class="result-box"><p>Không có câu hỏi.</p></div>'; return; }
+  const total = questions.length;
+  const done = Object.keys(answered).length;
+  const correct = Object.values(answered).filter(v=>v).length;
+  const wrong = done - correct;
+  document.getElementById('s-done').textContent = done;
+  document.getElementById('s-correct').textContent = correct;
+  document.getElementById('s-wrong').textContent = wrong;
+  document.getElementById('s-pct').textContent = done > 0 ? Math.round(correct/done*100) + '%' : '0%';
+  document.getElementById('prog').style.width = Math.round(done/total*100) + '%';
+  document.getElementById('q-pos').textContent = (cur+1) + ' / ' + total;
+  document.getElementById('wrong-count').textContent = wrongSet.size;
+  document.getElementById('btn-prev').disabled = cur === 0;
+  document.getElementById('btn-next').textContent = cur === total-1 ? 'Kết quả' : 'Tiếp →';
+
+  if (cur >= total) { showResult(); return; }
+  const q = questions[cur];
+  const qi = q.origIdx !== undefined ? q.origIdx : cur;
+  const isAnswered = answered[cur] !== undefined;
+  const letters = ['A','B','C','D'];
+  let optsHtml = q.o.map((opt, i) => {
+    let cls = 'opt';
+    if (isAnswered) {
+      cls += ' disabled';
+      if (i === q.a) cls += ' correct';
+      else if (answered[cur] === false && i === q.selectedIdx) cls += ' wrong';
+    }
+    return `<div class="${cls}" onclick="answer(${i})" data-idx="${i}"><span class="opt-letter">${letters[i]}.</span> ${opt}</div>`;
+  }).join('');
+
+  let feedback = '';
+  if (isAnswered) {
+    if (answered[cur]) feedback = `<div class="feedback ok">✓ Chính xác! Đáp án đúng: ${letters[q.a]}. ${q.o[q.a]}</div>`;
+    else feedback = `<div class="feedback err">✗ Sai rồi! Đáp án đúng: ${letters[q.a]}. ${q.o[q.a]}</div>`;
+  }
+
+  document.getElementById('q-area').innerHTML = `
+    <div class="q-card">
+      <div class="q-num">Câu ${qi+1}</div>
+      <div class="q-text">${q.q}</div>
+      <div class="options">${optsHtml}</div>
+      ${feedback}
+    </div>`;
+}
+
+function answer(idx) {
+  if (answered[cur] !== undefined) return;
+  const q = questions[cur];
+  const correct = idx === q.a;
+  q.selectedIdx = idx;
+  answered[cur] = correct;
+  const qi = q.origIdx !== undefined ? q.origIdx : cur;
+  if (!correct) wrongSet.add(qi); else wrongSet.delete(qi);
+  render();
+}
+
+function nextQ() {
+  if (cur >= questions.length - 1) { showResult(); return; }
+  cur++; render();
+}
+
+function prevQ() { if (cur > 0) { cur--; render(); } }
+
+function showResult() {
+  const total = questions.length;
+  const done = Object.keys(answered).length;
+  const correct = Object.values(answered).filter(v=>v).length;
+  const pct = Math.round(correct/total*100);
+  let msg = pct >= 80 ? '🎉 Xuất sắc! Bạn đã nắm vững kiến thức.' : pct >= 60 ? '👍 Khá tốt! Ôn lại các câu sai nhé.' : '📚 Cần ôn tập thêm. Hãy thử lại!';
+  document.getElementById('q-area').innerHTML = `
+    <div class="result-box">
+      <div class="big">${pct}%</div>
+      <div class="sub">${correct} / ${total} câu đúng</div>
+      <div class="msg">${msg}</div>
+      ${wrongSet.size > 0 ? `<br><button class="mode-btn" onclick="setMode('wrong')">Ôn lại ${wrongSet.size} câu sai</button>` : ''}
+    </div>`;
+  document.getElementById('wrong-count').textContent = wrongSet.size;
+}
+
+function restartQuiz() { cur = 0; answered = {}; wrongSet = new Set(); setMode(mode); }
+
+render();
+</script>
